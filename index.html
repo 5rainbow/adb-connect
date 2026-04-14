@@ -1,0 +1,107 @@
+<html>
+
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <div id="app">
+    <div v-if="error" class="text-red-500 mt-2">{{ error }}</div>
+    <div v-else>
+      <input class="w-full pl-2 p-1 border border-gray-300 rounded" type="text" v-model="shellCommand" placeholder="ADB Address">
+      <div class="text-gray-500 text-sm mt-1">
+        运行时间: {{ formattedRuntime }}
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script>
+    new Vue({
+      el: "#app",
+      data: {
+        adbAddress: "",
+        error: "",
+        refreshInterval: null,
+        startTime: Date.now(),
+        currentTime: Date.now()
+      },
+      methods: {
+        async connectDevice() {
+          try {
+            await this._connectDevice();
+          } catch (err) {
+            this.error = `Error: ${err.message}`;
+            this.adbAddress = "";
+          }
+        },
+        async _connectDevice() {
+          // Parse URL path to extract device ID
+          // URL format: http://localhost:33299/plugin/helloworld/index.html?deviceId=a-08a3d291&id=1
+          const urlParams = new URLSearchParams(window.location.search);
+          const deviceId = urlParams.get('deviceId');
+
+          if (!deviceId) {
+            this.error = "No device ID found in URL";
+            return;
+          }
+
+          // Build API URL
+          const apiUrl = `${location.protocol}//${location.host}/api/v1/devices/${deviceId}/connect`;
+          console.log(apiUrl)
+
+          // Make API call
+          const response = await fetch(apiUrl);
+          const result = await response.json();
+
+          if (result.code === 0 && result.data && result.data.endpoint) {
+            this.adbAddress = result.data.endpoint;
+          } else {
+            this.error = result.message || "Failed to connect to device";
+            this.adbAddress = "";
+          }
+        }
+      },
+      computed: {
+        shellCommand() {
+          return this.adbAddress ? `adb connect ${this.adbAddress}` : "";
+        },
+        formattedRuntime() {
+          if (!this.startTime) return "00:00:00";
+
+          const elapsed = Math.round((this.currentTime - this.startTime) / 1000);
+          console.log(elapsed)
+          const hours = Math.floor(elapsed / 3600);
+          const minutes = Math.floor((elapsed % 3600) / 60);
+          const seconds = elapsed % 60;
+
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+      },
+      mounted() {
+        this.startTime = Date.now();
+
+        this.connectDevice();
+
+        // Set up interval to refresh connection every 10 minutes
+        this.refreshInterval = setInterval(() => {
+          this.connectDevice();
+        }, 10 * 60 * 1000); // 10 minutes in milliseconds
+
+        // Update runtime display every second
+        this.timeInterval = setInterval(() => {
+          this.currentTime = Date.now();
+        }, 1000);
+      },
+      beforeDestroy() {
+        // Clear intervals when component is destroyed
+        if (this.refreshInterval) {
+          clearInterval(this.refreshInterval);
+        }
+        if (this.timeInterval) {
+          clearInterval(this.timeInterval);
+        }
+      }
+    })
+  </script>
+</body>
+
+</html>
+
