@@ -5,7 +5,13 @@
   <div id="app">
     <div v-if="error" class="text-red-500 mt-2">{{ error }}</div>
     <div v-else>
-      <input class="w-full pl-2 p-1 border border-gray-300 rounded" type="text" v-model="shellCommand" placeholder="ADB Address">
+      <input 
+        class="w-full pl-2 p-1 border border-gray-300 rounded cursor-pointer" 
+        type="text" 
+        v-model="shellCommand" 
+        placeholder="ADB Address"
+        @click="selectAllText"
+        readonly>
       <div class="text-gray-500 text-sm mt-1">
         运行时间: {{ formattedRuntime }}
       </div>
@@ -57,6 +63,15 @@
             this.error = result.message || "Failed to connect to device";
             this.adbAddress = "";
           }
+        },
+        selectAllText() {
+          // 获取input元素并全选文本
+          this.$nextTick(() => {
+            const input = document.querySelector('input');
+            if (input) {
+              input.select();
+            }
+          });
         }
       },
       computed: {
@@ -104,4 +119,3 @@
 </body>
 
 </html>
-
